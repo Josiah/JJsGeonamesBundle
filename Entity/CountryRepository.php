@@ -3,6 +3,8 @@
 namespace JJs\Bundle\GeonamesBundle\Entity;
 
 use Doctrine\ORM\EntityRepository;
+use JJs\Bundle\GeonamesBundle\Model\CountryRepositoryInterface;
+use JJs\Bundle\GeonamesBundle\Model\CountryInterface;
 
 /**
  * Country Repository
@@ -20,45 +22,91 @@ class CountryRepository extends EntityRepository implements CountryRepositoryInt
      * 
      * @return Country
      */
-    public function getCountry($code)
+    public function getCountry($identifier)
     {
-        return $this->findBy(['code' => $code]);
+        // Pass through country instances
+        if ($identifier instanceof Country) return $identifier;
+
+        // Extract the code from country interfaces as required
+        if ($identifier instanceof CountryInterface) $identifier = $identifier->getCode();
+
+        // Find the country by its code
+        return $this->findOneBy(['code' => $identifier]);
     }
 
     /**
-     * Updates the repository with the specified country information
-     *
-     * Where a country exists in the database matching the country code, its
-     * information will be overwritten by the specified information.
+     * Returns all the countries in the country repository
      * 
-     * @param string $code             Country code (ISO3)
-     * @param string $name             Country name
-     * @param string $domain           Top level domain
-     * @param string $postalCodeFormat Postal code format
-     * @param string $postalCodeRegex  Postal code regex
-     * @param string $phonePrefix      Phone prefix
+     * @return Country[]
+     */
+    public function getAllCountries()
+    {
+        return $this->findAll();
+    }
+
+    /**
+     * Copies the data from the country to the destination
+     * 
+     * @param CountryInterface $source      Source
+     * @param Country          $destination Destination
+     */
+    public function copyCountry(CountryInterface $source, Country $destination)
+    {
+        $code             = $source->getCode();
+        $name             = $source->getName();
+        $domain           = $source->getDomain();
+        $postalCodeFormat = $source->getPostalCodeFormat();
+        $postalCodeRegex  = $source->getPostalCodeRegex();
+        $phonePrefix      = $source->getPhonePrefix();
+
+        // Copy the country code
+        if ($code !== $destination->getCode()) {
+            $destination->setCode($code);
+        }
+
+        // Copy the country name
+        if ($name !== $destination->getName()) {
+            $destination->setName($name);
+        }
+
+        // Copy the top level domain suffix
+        if ($domain !== $destination->getDomain()) {
+            $destination->setDomain($domain);
+        }
+
+        // Copy the postal code format
+        if ($postalCodeFormat !== $destination->getPostalCodeFormat()) {
+            $destination->setPostalCodeFormat($postalCodeFormat);
+        }
+
+        // Copy the postal code regex
+        if ($postalCodeRegex !== $destination->getPostalCodeRegex()) {
+            $destination->setPostalCodeRegex($postalCodeRegex);
+        }
+
+        // Copy the phone prefix
+        if ($phonePrefix !== $destination->getPhonePrefix()) {
+            $destination->setPhonePrefix($phonePrefix);
+        }
+    }
+
+    /**
+     * Updates the country in this repository
+     *
+     * @param CountryInterface $data Country
      * 
      * @return CountryInterface
      */
-    public function setCountryData($code, $name = null, $domain = null, $postalCodeFormat = null, $postalCodeRegex = null, $phonePrefix = null)
+    public function saveCountry(CountryInterface $data)
     {
-        $country = $this->getCountry($code);
-
-        // Generate a new country when there is no existing country
-        if (!$country) {
-            $country = $countryRepository->createCountry();
-            $country->setCode($code);
+        if ($data instanceof Country) {
+            $country = $data;
+        } else {
+            $country = $this->getCountry($data) ?: new Country();
+            $this->copyCountry($data, $country);
         }
 
-        // Set the country data
-        $country->setGeonameID($geonameID);
-        $country->setName($name);
-        $country->setDomain($domain);
-        $country->setPostalCodeFormat($postalCodeFormat);
-        $country->setPostalCodeRegex($postalCodeRegex);
-        $country->setPhonePrefix($phonePrefix);
-
-        // Persist the country into the database
+        // Persist and flush the entity in the entity manager
         $em = $this->getEntityManager();
         $em->persist($country);
         $em->flush();

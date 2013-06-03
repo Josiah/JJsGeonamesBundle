@@ -27,133 +27,133 @@ class CountryLoader
      *
      * @var int
      */
-    const ISO_CODE_POSITION = 0;
+    const COLUMN_ISO_CODE = 0;
 
     /**
      * 3 character ISO code position
      *
      * @var int
      */
-    const ISO3_CODE_POSITION = 1;
+    const COLUMN_ISO3_CODE = 1;
 
     /**
      * Numeric ISO code position
      *
      * @var int
      */
-    const ISO_NUMERIC_CODE_POSITION = 2;
+    const COLUMN_ISO_NUMERIC_CODE = 2;
 
     /**
      * FIPS code position
      *
      * @var int
      */
-    const FIPS_CODE_POSITION = 3;
+    const COLUMN_FIPS_CODE = 3;
 
     /**
      * Name position
      *
      * @var int
      */
-    const NAME_POSITION = 4;
+    const COLUMN_NAME = 4;
 
     /**
      * Capital position
      *
      * @var int
      */
-    const CAPITAL_POSITION = 5;
+    const COLUMN_CAPITAL = 5;
 
     /**
      * Area position
      *
      * @var int
      */
-    const AREA_POSITION = 6;
+    const COLUMN_AREA = 6;
 
     /**
      * Population position
      *
      * @var int
      */
-    const POPULATION_POSITION = 7;
+    const COLUMN_POPULATION = 7;
 
     /**
      * Continent position
      *
      * @var int
      */
-    const CONTINENT_POSITION = 8;
+    const COLUMN_CONTINENT = 8;
 
     /**
      * Top level domain name position
      *
      * @var int
      */
-    const TOP_LEVEL_DOMAIN_POSITION = 9;
+    const COLUMN_TOP_LEVEL_DOMAIN = 9;
 
     /**
      * Currency code position
      *
      * @var int
      */
-    const CURRENCY_CODE_POSITION = 10;
+    const COLUMN_CURRENCY_CODE = 10;
 
     /**
      * Currency name position
      *
      * @var int
      */
-    const CURRENCY_NAME_POSITION = 11;
+    const COLUMN_CURRENCY_NAME = 11;
 
     /**
      * Phone position
      *
      * @var int
      */
-    const PHONE_POSITION = 12;
+    const COLUMN_PHONE = 12;
 
     /**
      * Postal code format position
      *
      * @var int
      */
-    const POSTAL_CODE_FORMAT_POSITION = 13;
+    const COLUMN_POSTAL_CODE_FORMAT = 13;
 
     /**
      * Postal code regular expression position
      *
      * @var int
      */
-    const POSTAL_CODE_REGEX_POSITION = 14;
+    const COLUMN_POSTAL_CODE_REGEX = 14;
 
     /**
      * Languages position
      *
      * @var int
      */
-    const LANGUAGES_POSITION = 15;
+    const COLUMN_LANGUAGES = 15;
 
     /**
      * GeoName ID position
      *
      * @var int
      */
-    const GEONAME_ID_POSITION = 16;
+    const COLUMN_GEONAME_ID = 16;
 
     /**
      * Neighbours position
      *
      * @var int
      */
-    const NEIGHBOURS_POSITION = 17;
+    const COLUMN_NEIGHBOURS = 17;
 
     /**
      * Equivelent FIPS code position
      *
      * @var int
      */
-    const EQUIVALENT_FIPS_CODE_POSITION = 18;
+    const COLUMN_EQUIVALENT_FIPS_CODE = 18;
 
     /**
      * Country repository
@@ -191,8 +191,9 @@ class CountryLoader
      */
     public function load($file = null, LoggerInterface $log = null)
     {
-        $file              = $file ?: static::DEFAULT_FILE;
-        $log               = $log ?: new NullLogger();
+        $file = $file ?: static::DEFAULT_FILE;
+        $log  = $log ?: new NullLogger();
+
         $countryRepository = $this->getCountryRepository();
 
         // Log an informational message
@@ -202,30 +203,31 @@ class CountryLoader
         ]);
 
         // Open the tab separated file for reading
-        $tsv = fopen($file ?: self::DEFAULT_FILE, 'r');
+        $tsv = fopen($file, 'r');
         while(false !== $data = fgetcsv($tsv, 0, "\t")) {
 
             // Skip all commented codes
             if (substr($data[0], 0, 1) === '#') continue;
 
-            $code             = $data[self::ISO_CODE_POSITION];
-            $geonameID        = $data[self::GEONAME_ID_POSITION];
-            $name             = $data[self::NAME_POSITION];
-            $domain           = $data[self::TOP_LEVEL_DOMAIN_POSITION];
-            $postalCodeFormat = $data[self::POSTAL_CODE_FORMAT_POSITION];
-            $postalCodeRegex  = $data[self::POSTAL_CODE_REGEX_POSITION];
-            $phonePrefix      = $data[self::PHONE_POSITION];
+            $code             = $data[self::COLUMN_ISO_CODE];
+            $name             = $data[self::COLUMN_NAME];
+            $domain           = $data[self::COLUMN_TOP_LEVEL_DOMAIN];
+            $postalCodeFormat = $data[self::COLUMN_POSTAL_CODE_FORMAT];
+            $postalCodeRegex  = $data[self::COLUMN_POSTAL_CODE_REGEX];
+            $phonePrefix      = $data[self::COLUMN_PHONE];
 
-            // Update the country in the repository
-            $log->info(sprintf("Loading country {code} ({name})", [
+            // Log the process
+            $log->info("{code} ({name})", [
                 'code'             => $code,
                 'name'             => $name,
                 'domain'           => $domain,
                 'postalCodeFormat' => $postalCodeFormat,
                 'postalCodeRegex'  => $postalCodeRegex,
                 'phonePrefix'      => $phonePrefix,
-            ]));
-            $countryRepository->setCountryData($code, $name, $domain, $postalCodeFormat, $postalCodeRegex, $phonePrefix);
+            ]);
+
+            $country = new Country($code, $name, $domain, $postalCodeFormat, $postalCodeRegex, $phonePrefix);
+            $countryRepository->saveCountry($country);
         }
     }
 }

@@ -38,16 +38,6 @@ class Country implements CountryInterface
     protected $id;
 
     /**
-     * GeoNames.org ID
-     *
-     * Uniquely identifies this country for syncronization from data on
-     * GeoNames.org.
-     * 
-     * @Column(name="geoname_id", type="integer")
-     */
-    protected $geonameID;
-
-    /**
      * ISO code (2 character)
      *
      * @Column(length=2, unique=true)
@@ -106,28 +96,6 @@ class Country implements CountryInterface
     public function getID()
     {
         return $this->id;
-    }
-
-    /**
-     * Returns the geoname ID of this country
-     * 
-     * @return int
-     */
-    public function getGeonameID()
-    {
-        return $this->geonameID;
-    }
-
-    /**
-     * Sets the geoname ID of this country
-     * 
-     * @param int $geonameID Geoname ID
-     */
-    public function setGeonameID($geonameID)
-    {
-        $this->geonameID = $geonameID;
-
-        return $this;
     }
 
     /**

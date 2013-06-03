@@ -16,7 +16,14 @@
     "minimum-stability": "dev",
     "require": {
         "php": "~5.4",
+        "guzzle/http": "~3.5",
         "jjs/common": "*",
-        "symfony/framework-bundle": "~2.0"
+        "symfony/framework-bundle": "~2.1"
+    },
+    "require-dev": {
+        "symfony/console": "~2.1",
+        "symfony/dom-crawler": "~2.1",
+        "symfony/css-selector": "~2.2",
+        "jms/cg": "~1.0"
     }
 }

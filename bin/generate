@@ -1,0 +1,142 @@
+#!/usr/bin/env php
+<?php
+
+require_once __DIR__.'/../vendor/autoload.php';
+
+use Symfony\Component\Console\Application;
+use Symfony\Component\Console\Helper\DescriptorHelper;
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputDefinition;
+use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\DomCrawler\Crawler;
+use CG\Generator\PhpClass;
+use CG\Generator\Writer;
+
+/**
+ * Code Generator Application
+ * 
+ * @var Application
+ */
+$app = new Application('GeoNames.org Code Generator', '0.1.0');
+
+// Generate feature constants command
+$app->register('feature-constants')
+    ->setDescription("Loads constants which are used to classify geographical localities")
+    ->addArgument(
+        'url', InputArgument::OPTIONAL,
+        'URL where the constants should be derived from',
+        'http://www.geonames.org/export/codes.html')
+    ->addOption(
+        'class', null, InputOption::VALUE_REQUIRED,
+        'Class to be generated to contain feature code constants',
+        'JJs\\Bundle\\GeonamesBundle\\Data\\FeatureCodes')
+    ->addOption(
+        'file', null, InputOption::VALUE_REQUIRED,
+        'File where feature classification constants class will be written',
+        dirname(__DIR__).'/Data/FeatureCodes.php')
+    ->setCode(function (InputInterface $input, OutputInterface $output) {
+        $url = $input->getArgument('url');
+        $html = file_get_contents($url);
+
+        $class = $input->getOption('class');
+        $file = $input->getOption('file');
+        $writer = new Writer();
+
+        // Write the license header
+        $writer->writeLn("<?php");
+        $writer->writeLn("/**");
+        $writer->writeLn(" * Copyright (c) 2013 Josiah Truasheim");
+        $writer->writeLn(" * ");
+        $writer->writeLn(" * Permission is hereby granted, free of charge, to any person obtaining a copy");
+        $writer->writeLn(" * of this software and associated documentation files (the \"Software\"), to deal");
+        $writer->writeLn(" * in the Software without restriction, including without limitation the rights");
+        $writer->writeLn(" * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell");
+        $writer->writeLn(" * copies of the Software, and to permit persons to whom the Software is");
+        $writer->writeLn(" * furnished to do so, subject to the following conditions:");
+        $writer->writeLn(" * ");
+        $writer->writeLn(" * The above copyright notice and this permission notice shall be included in");
+        $writer->writeLn(" * all copies or substantial portions of the Software.");
+        $writer->writeLn(" * ");
+        $writer->writeLn(" * THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR");
+        $writer->writeLn(" * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,");
+        $writer->writeLn(" * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE");
+        $writer->writeLn(" * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER");
+        $writer->writeLn(" * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,");
+        $writer->writeLn(" * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN");
+        $writer->writeLn(" * THE SOFTWARE.");
+        $writer->writeLn(" */");
+        $writer->writeLn("");
+
+        // Write the namespace if required
+        if (false !== $ns = strrpos($class, '\\')) {
+            $writer->writeLn("namespace ".substr($class, 0, $ns).";");
+            $writer->writeLn("");
+            $alias = substr($class, $ns+1);
+        } else {
+            $alias = $class;
+        }
+
+        // Write the class definition
+        $writer->writeLn("/**");
+        $writer->writeLn(" * GeoNames Feature ".($class === $codeClassName ? "Codes" : "Classifications"));
+        $writer->writeLn(" * ");
+        $writer->writeLn(" * DO NOT MODIFY");
+        $writer->writeLn(" * Generated from $url");
+        $writer->writeLn(" * ");
+        $writer->writeLn(" * @see $url");
+        $writer->writeLn(" * @author Josiah <josiah@jjs.id.au>");
+        $writer->writeLn(" */");
+        $writer->writeLn("class $alias");
+        $writer->writeLn("{");
+        $writer->indent();
+
+        // Iterate over each row in the resource table
+        foreach ((new Crawler($html))->filter('table.restable tr') as $row) {
+            $headings = $row->getElementsByTagName('th');
+            $cells = $row->getElementsByTagName('td');
+
+            // Process groupings
+            if ($headings->length > 0) {
+                list($code, $description) = explode(' ', $headings->item(0)->nodeValue, 2);
+
+                // Output the classification
+                $output->writeLn("<info>$code</info> <comment>$description</comment>");
+
+                // Continue to the next row
+                continue;
+            }
+
+            // Process classifications
+            if ($cells->length === 3) {
+                $code = trim($cells->item(0)->nodeValue);
+                $name = trim($cells->item(1)->nodeValue);
+                $description = trim($cells->item(2)->nodeValue);
+
+                $writer->writeLn("");
+                $writer->writeLn("/**");
+                $writer->writeLn(sprintf(" * %s", ucfirst($name)));
+                $writer->writeLn(" * ");
+                if ($description) {
+                    $writer->writeLn(sprintf(" * %s", ucfirst($description)));
+                    $writer->writeLn(" * ");
+                }
+                $writer->writeLn(" * @var string");
+                $writer->writeLn(" */");
+                $writer->writeLn(sprintf("const %s = '%s';", strtoupper($code), $code));
+
+                // Output the classification
+                $output->writeLn("<info>$code</info> <comment>$name</comment> $description");
+            }
+        }
+
+        $writer->outdent();
+        $writer->writeLn("}");
+
+        file_put_contents($file, $writer->getContent());
+    });
+
+// Execute the application
+$app->run();

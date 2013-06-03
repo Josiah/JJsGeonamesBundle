@@ -1,6 +1,6 @@
 <?php
 
-namespace JJs\GeonamesBundle\Model;
+namespace JJs\Bundle\GeonamesBundle\Model;
 
 /**
  * Country
