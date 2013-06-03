@@ -1,0 +1,27 @@
+<?xml version="1.0" ?>
+<container
+    xmlns="http://symfony.com/schema/dic/services"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+    <services>
+        <!-- Country Repository -->
+        <service id="geonames.country.entity_repository" class="JJs\Bundle\GeonamesBundle\Entity\CountryRepository"
+            factory-service="doctrine.orm.entity_manager"
+            factory-method="getRepository">
+            <argument>JJs\Bundle\GeonamesBundle\Entity\Country</argument>
+        </service>
+
+        <!--
+            Country Repository
+
+            Aliased to the appropriate country repository based on the chozen
+            data storage implementation.
+        -->
+        <service id="geonames.country.repository" alias="geonames.country.entity_repository" />
+
+        <!-- Country Loader -->
+        <service id="geonames.country.loader" class="JJs\Bundle\GeonamesBundle\Data\CountryLoader">
+            <argument id="geonames.country.repository" type="service" />
+        </service>
+    </services>
+</container>
