@@ -41,6 +41,7 @@ class SchemaDefinition
             new CountryTableDefinition(),
             new TimezoneTableDefinition(),
             new StateTableDefinition(),
+            new CityTableDefinition(),
         ];
     }
 

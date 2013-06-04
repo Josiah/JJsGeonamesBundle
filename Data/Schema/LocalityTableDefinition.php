@@ -79,6 +79,9 @@ abstract class LocalityTableDefinition extends TableDefinition
                 // Primary key
                 $table->setPrimaryKey(['id'], "PK_Geo{$locality}_id");
 
+                // Unique Keys
+                $table->addUniqueIndex(['geoname_id'],  'UK_Geo{$locality}_geoname');
+
                 // Foriegn keys
                 $table->addNamedForeignKeyConstraint("FK_Geo{$locality}_country", CountryTableDefinition::NAME, ['country_id'], ['id']);
                 $table->addNamedForeignKeyConstraint("FK_Geo{$locality}_timezone", TimezoneTableDefinition::NAME, ['timezone_id'], ['id']);

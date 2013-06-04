@@ -348,7 +348,7 @@ class Locality implements LocalityInterface
      * 
      * @param TimezoneInterface $timezone Timezone
      */
-    public function setTimezone(TimezoneInterface $timezone)
+    public function setTimezone(TimezoneInterface $timezone = null)
     {
         $this->timezone = $timezone;
     }

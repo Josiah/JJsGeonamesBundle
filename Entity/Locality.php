@@ -296,7 +296,7 @@ abstract class Locality
      *
      * @return Locality
      */
-    public function setTimezone(Timezone $timezone)
+    public function setTimezone(Timezone $timezone = null)
     {
         $this->timezone = $timezone;
 

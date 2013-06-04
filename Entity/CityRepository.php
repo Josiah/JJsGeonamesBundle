@@ -27,48 +27,56 @@ use JJs\Bundle\GeonamesBundle\Data\FeatureCodes;
 use JJs\Bundle\GeonamesBundle\Model\LocalityInterface;
 
 /**
- * State Repository
+ * City Repository
  *
- * Manages the persistance and retrieval of state entities from the database.
+ * Manages the persistance and retrieval of city entities from the database.
  *
  * @author Josiah <josiah@jjs.id.au>
  */
-class StateRepository extends LocalityRepository
+class CityRepository extends LocalityRepository
 {
     /**
-     * Returns a state
+     * Returns a reference city from the database which matches the specified
+     * city
      * 
-     * @param mixed $state State
+     * @param mixed $city City
      * 
-     * @return State
+     * @return void
      */
-    public function getState($state)
+    public function getCity($city)
     {
-        if ($state instanceof State) return $state;
-        if ($state instanceof LocalityInterface) return $this->getLocality($state);
+        // Pass through existing refrences
+        if ($city instanceof City) return $city;
 
-        return $this->find($state);
+        // Load cities using their geoname id for locality interfaces
+        if ($city instanceof LocalityInterface) {
+            return $this->findOneBy(['geonameIdentifier' => $city->getGeonameIdentifier()]);
+        }
+
+        // Load the city as if it was the primary key
+        return $this->findOneBy(['id' => $city->getID()]);
     }
 
     /**
-     * Imports a locality as a state
+     * Imports a locality as a city
      * 
      * @param LocalityInterface $locality Locality
-     * @return State
+     * 
+     * @return City
      */
     public function importLocality(LocalityInterface $locality)
     {
         // No change is neccisasary for state instances
-        if ($locality instanceof State) return $locality;
+        if ($locality instanceof City) return $locality;
 
         // Load the existing state for the locality, or create a new instance
-        $state = $this->getState($locality) ?: new State();
+        $city = $this->getCity($locality) ?: new City();
 
         // Copy data from the import locality into an existing or new state
         // instance
-        $this->copyLocality($locality, $state);
+        $this->copyLocality($locality, $city);
 
         // Return the state instance from the locality
-        return $state;
+        return $city;
     }
 }

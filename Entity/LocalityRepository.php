@@ -89,6 +89,22 @@ abstract class LocalityRepository extends EntityRepository implements LocalityRe
     }
 
     /**
+     * Returns a locality from this repository which matches the data in the
+     * specified locality
+     * 
+     * @param LocalityInterface $locality Locality instance
+     * @return Locality
+     */
+    public function getLocality(LocalityInterface $locality)
+    {
+        $entityClass = $this->getClassName();
+
+        if ($locality instanceof $entityClass) return $locality;
+
+        return $this->findOneBy(['geonameIdentifier' => $locality->getGeonameIdentifier()]);
+    }
+
+    /**
      * Copies locality data from a locality interface to a locality entity
      * 
      * @param LocalityInterface $source      Source locality

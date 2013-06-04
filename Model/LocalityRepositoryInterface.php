@@ -31,13 +31,18 @@ namespace JJs\Bundle\GeonamesBundle\Model;
 interface LocalityRepositoryInterface
 {
     /**
-     * Saves a locality
+     * Prepares a locality for import into this locality repository
      *
-     * Once saved the resulting locality will be returned by this method
+     * The returned value of this methord should be ready for storatge in this
+     * locality repository.
+     *
+     * Note that the import mechanism may choose to be aware of the
+     * implementation specifics (e.g. EntityRepository) and may not subsiquently
+     * call the 'saveLocality' method.
      * 
      * @param LocalityInterface $locality Locality
      * 
      * @return LocalityInterface
      */
-    public function saveLocality(LocalityInterface $locality);
+    public function importLocality(LocalityInterface $locality);
 }

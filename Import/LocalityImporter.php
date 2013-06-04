@@ -25,6 +25,7 @@ namespace JJs\Bundle\GeonamesBundle\Import;
 
 use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Persistence\ManagerRegistry;
 use Guzzle\Http\Client as HttpClient;
 use InvalidArgumentException;
 use JJs\Bundle\GeonamesBundle\Model\CountryInterface;
@@ -95,6 +96,13 @@ class LocalityImporter
     protected $localityRepositories = [];
 
     /**
+     * Object manager registry
+     * 
+     * @var ManagerRegistry
+     */
+    protected $managerRegistry;
+
+    /**
      * Export path
      *
      * Identifies the path to the exported data for the locality
@@ -125,16 +133,31 @@ class LocalityImporter
     /**
      * Creates a new locality repository
      * 
-     * @param string $importPath Export path
-     * @param string $cachePath  Cache path
+     * @param ManagerRegistry             $managerRegistry    Manager registry where locality object managers are held
+     * @param CountryRepositoryInterface  $countryRepository  Country repository
+     * @param TimezoneRepositoryInterface $timezoneRepository Timezone repository
+     * @param string                      $importPath         Base directory where import files will be loaded from
+     * @param string                      $cachePath          Cache directly where local files will be stored
      */
-    public function __construct(CountryRepositoryInterface $countryRepository, TimezoneRepositoryInterface $timezoneRepository, $importPath = null, $cachePath = null)
+    public function __construct(ManagerRegistry $managerRegistry, CountryRepositoryInterface $countryRepository, TimezoneRepositoryInterface $timezoneRepository, $importPath = null, $cachePath = null)
     {
+        $this->managerRegistry = $managerRegistry;
+
         $this->countryRepository  = $countryRepository;
         $this->timezoneRepository = $timezoneRepository;
 
         $this->setImportPath($importPath ?: static::DEFAULT_IMPORT_PATH);
         $this->setCachePath($cachePath ?: static::getDefaultCachePath());
+    }
+
+    /**
+     * Return the manager which retrieved the geoname
+     * 
+     * @return ManagerRegistry
+     */
+    public function getManagerRegistry()
+    {
+        return $this->managerRegistry;
     }
 
     /**
@@ -476,7 +499,9 @@ class LocalityImporter
     public function importCountry($country, LoggerInterface $log = null)
     {
         $log = $log ?: new NullLogger();
+
         $countryRepository = $this->getCountryRepository();
+        $managerRegistry   = $this->getManagerRegistry();
 
         // Load the country if required
         if (!$country instanceof CountryInterface) {
@@ -516,9 +541,16 @@ class LocalityImporter
 
         // Iterate over all the localities in the stream
         $lineNumber = 0;
+        $managers = [];
         while (false !== $row = fgetcsv($stream, 0, $separator, $enclosure)) {
             // Increment the line number
             $lineNumber++;
+
+            // Log the line number and file
+            $log->debug("Line {line} of {file}", [
+                'line' => $lineNumber,
+                'file' => $path,
+            ]);
 
             // Skip blank rows
             if (!$row[0]) continue;
@@ -539,9 +571,65 @@ class LocalityImporter
             // information
             $locality = call_user_func_array([$this, 'createLocality'], $row);
 
+            // Determine the locality repository for import
+            $localityRepository = $this->getLocalityRepository($locality->getFeatureCode());
+
+            // Skip unsupported geographical features
+            if (!$localityRepository) {
+                $log->debug("{name} skipped ({code} feature not supported)", [
+                    'code' => $locality->getFeatureCode(),
+                    'name' => $locality->getNameAscii(),
+                ]);
+                continue;
+            }
+
             // Import the specific locality
-            $this->importLocality($locality, $country, $log);
+            $locality = $this->importLocality($localityRepository, $locality, $country, $log);
+
+            // Skip non-importable localities
+            if (!$locality) continue;
+
+            // Determine the manager for the locality
+            $localityClass = get_class($locality);
+            $localityManager = $managerRegistry->getManagerForClass($localityClass);
+
+            // Ensure the locality manager was loaded
+            if (!$localityManager) {
+                $log->error("No object manager registered for {class}", [
+                    'class' => get_class($locality),
+                ]);
+                continue;
+            }
+
+            // Add the manager to the list of local managers (if required)
+            if (!in_array($localityManager, $managers, true)) {
+                $managers[] = $localityManager;
+            }
+
+            // Persist the locality
+            $localityManager->persist($locality);
+
+            // Register that the locality was imported
+            $type = substr($localityClass, strrpos($localityClass, '\\')+1);
+            $log->info("{country_code} {type} {locality} imported into repository {repository}", [
+                'country_code' => $country->getCode(),
+                'locality'     => $locality->getNameAscii(),
+                'type'         => $type,
+                'repository'   => get_class($localityRepository),
+            ]);
         }
+
+        $log->info("Saving {country} data", ['country' => $country->getName()]);
+
+        // Flush all managers
+        foreach ($managers as $manager) {
+            $manager->flush();
+        }
+
+        $log->notice("{code} ({country}) data saved", [
+            'code'    => $country->getCode(),
+            'country' => $country->getName(),
+        ]);
 
         // Close the locality stream
         fclose($stream);
@@ -549,33 +637,18 @@ class LocalityImporter
 
     /**
      * Imports an individual locality into the the locality repositories
-     * 
-     * @param Locality         $locality Locality
-     * @param CountryInterface $country  Country 
-     * @param LoggerInterface  $log      Import log
+     *
+     * @param LocalityRepositoryInterface $localityRepository Locality repository
+     * @param Locality                    $locality           Locality
+     * @param CountryInterface            $country            Country 
+     * @param LoggerInterface             $log                Import log
      */
-    public function importLocality(Locality $locality, CountryInterface $country = null, LoggerInterface $log = null)
+    public function importLocality(LocalityRepositoryInterface $localityRepository, Locality $locality, CountryInterface $country = null,  LoggerInterface $log = null)
     {
         $log = $log ?: new NullLogger();
 
-        $localityRepository = $this->getLocalityRepository($locality->getFeatureCode());
         $countryRepository  = $this->getCountryRepository();
         $timezoneRepository = $this->getTimezoneRepository();
-
-        // Skip localities with no local repository
-        if (!$localityRepository) {
-            $log->debug("{name} skipped ({code} feature not supported)", [
-                'code' => $locality->getFeatureCode(),
-                'name' => $locality->getNameAscii(),
-            ]);
-            return;
-        }
-
-        // Log that the locality is being imported
-        $log->notice("Importing '{locality}' into repository {repository}", [
-            'locality' => $locality->getNameAscii(),
-            'repository' => get_class($localityRepository),
-        ]);
 
         // Load the country for the locality if required
         if (!$country || $locality->getCountryCode() !== $country->getCode()) {
@@ -586,7 +659,7 @@ class LocalityImporter
                     'code' => $countryCode,
                     'repository' => get_class($countryRepository),
                 ]);
-                return;
+                return null;
             }
         }
 
@@ -594,27 +667,32 @@ class LocalityImporter
         $locality->setCountry($country);
 
         // Load the timezone for the locality
-        $timezone = $timezoneRepository->getTimezone($locality->getTimezoneIdentifier());
+        if ($locality->getTimezoneIdentifier()) {
+            $timezone = $timezoneRepository->getTimezone($locality->getTimezoneIdentifier());
 
-        if (!$timezone) {
-            $log->error("Timezone code '{code}' does not exist in repository {repository}", [
-                'code' => $locality->getTimezoneIdentifier(),
-                'repository' => get_class($timezoneRepository),
-            ]);
-            return;
+            if (!$timezone) {
+                $log->warning("Timezone code '{code}' does not exist in repository {repository}", [
+                    'code' => $locality->getTimezoneIdentifier(),
+                    'repository' => get_class($timezoneRepository),
+                ]);
+            }
+        } else {
+            $timezone = null;
         }
 
         // Set the timezone
         $locality->setTimezone($timezone);
-
-        // Store the locality
-        $localityRepository->saveLocality($locality);
 
         // Register that the locality was imported
         $log->debug("'{locality}' imported into repository {repository}", [
             'locality' => $locality->getNameAscii(),
             'repository' => get_class($localityRepository),
         ]);
+
+        // Import the localty into the repository
+        $locality = $localityRepository->importLocality($locality);
+
+        return $locality;
     }
 
     /**

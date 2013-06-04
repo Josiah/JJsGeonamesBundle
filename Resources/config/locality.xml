@@ -13,6 +13,7 @@
     xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
     <parameters>
         <parameter key="geonames.state.entity_repository.class">JJs\Bundle\GeonamesBundle\Entity\StateRepository</parameter>
+        <parameter key="geonames.city.entity_repository.class">JJs\Bundle\GeonamesBundle\Entity\CityRepository</parameter>
         <parameter key="geonames.locality.importer.class">JJs\Bundle\GeonamesBundle\Import\LocalityImporter</parameter>
     </parameters>
     <services>
@@ -43,17 +44,66 @@
         <service id="geonames.state.repository" alias="geonames.state.entity_repository" />
 
         <!--
+            City Entity Repository
+
+            Implementation of a Doctrine ORM repository which can store states
+            in a relational database.
+        -->
+        <service id="geonames.city.entity_repository" class="%geonames.city.entity_repository.class%"
+            factory-service="doctrine.orm.entity_manager"
+            factory-method="getRepository">
+            <argument>JJs\Bundle\GeonamesBundle\Entity\City</argument>
+            <call method="setCountryRepository">
+                <argument id="geonames.country.entity_repository" type="service" />
+            </call>
+            <call method="setTimezoneRepository">
+                <argument id="geonames.timezone.entity_repository" type="service" />
+            </call>
+        </service>
+
+        <!--
+            City Repository
+
+            Aliased to the appropriate city repository based on the chozen
+            data storage implementation.
+        -->
+        <service id="geonames.city.repository" alias="geonames.city.entity_repository" />
+
+        <!--
             Locality Importer
 
             Loads localities from a geonames.org country data files
         -->
         <service id="geonames.locality.importer" class="%geonames.locality.importer.class%">
+            <!-- Doctrine Manager -->
+            <argument id="doctrine" type="service" />
+
             <argument id="geonames.country.repository" type="service" />
             <argument id="geonames.timezone.repository" type="service" />
+
+            <!-- States -->
             <call method="addLocalityRepository">
                 <argument id="geonames.state.repository" type="service" />
                 <argument type="collection">
                     <argument>ADM1</argument>
+                </argument>
+            </call>
+
+            <!-- Cities -->
+            <call method="addLocalityRepository">
+                <argument id="geonames.city.repository" type="service" />
+                <argument type="collection">
+                    <argument>PPL</argument>
+                    <argument>PPLA</argument>
+                    <argument>PPLA2</argument>
+                    <argument>PPLA3</argument>
+                    <argument>PPLA4</argument>
+                    <argument>PPLC</argument>
+                    <argument>PPLF</argument>
+                    <argument>PPLG</argument>
+                    <argument>PPLL</argument>
+                    <argument>PPLS</argument>
+                    <argument>PPLX</argument>
                 </argument>
             </call>
         </service>
