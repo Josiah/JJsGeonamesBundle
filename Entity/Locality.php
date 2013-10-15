@@ -102,7 +102,7 @@ abstract class Locality
     /**
      * Modification date
      *
-     * @Column(name="modification_date", type="datetime")
+     * @Column(name="modification_date", type="datetime", nullable=true)
      * @var DateTime
      */
     protected $modificationDate;
