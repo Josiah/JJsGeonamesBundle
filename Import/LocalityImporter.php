@@ -608,6 +608,7 @@ class LocalityImporter
 
             // Persist the locality
             $localityManager->persist($locality);
+            $localityManager->flush();
 
             // Register that the locality was imported
             $type = substr($localityClass, strrpos($localityClass, '\\')+1);
