@@ -51,7 +51,8 @@ class Filter{
             switch ($varFunc) {
                 case "=":
                 case "equal":
-                    if(intval($ret) != intval($varValue) ||  (is_string($varValue) && is_string($ret)  && strcmp($ret, $varValue) != 0))
+                case "equals":
+                    if(intval($ret) != intval($varValue) ||  (is_string($varValue) && (is_string($ret) == false || strcmp($ret, $varValue) != 0)))
                         return false;
                     break;
                 case "min":
@@ -67,7 +68,7 @@ class Filter{
                         return false;
                     break;
                 case "contains":
-                    if(is_string($varValue) && (is_string($ret) == false || strpos($ret, $varValue) == -1))
+                    if(is_string($varValue) && (is_string($ret) == false || strpos($ret, $varValue) === false))
                         return false;
                     break;
             }
