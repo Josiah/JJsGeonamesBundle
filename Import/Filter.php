@@ -44,14 +44,14 @@ class Filter{
             $varFunc = $arr[1];
             $varValue = $arr[2];
 
-            $varName = "get" . ucwords($varName);
+            $varName = "get" . ucwords(str_replace(' ', '', $varName));
 
-
+            // TODO: Allow filtering by names, distance to long/lang
             $ret = call_user_func ( [$locality, $varName]);
             switch ($varFunc) {
                 case "=":
                 case "equal":
-                    if(intval($ret) != intval($varValue))
+                    if(intval($ret) != intval($varValue) ||  (is_string($varValue) && is_string($ret)  && strcmp($ret, $varValue) != 0))
                         return false;
                     break;
                 case "min":
@@ -64,6 +64,10 @@ class Filter{
                 case "<=":
                 case "<":
                     if(intval($ret) > intval($varValue))
+                        return false;
+                    break;
+                case "contains":
+                    if(is_string($varValue) && (is_string($ret) == false || strpos($ret, $varValue) == -1))
                         return false;
                     break;
             }
