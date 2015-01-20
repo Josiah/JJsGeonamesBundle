@@ -34,6 +34,7 @@ use JJs\Bundle\GeonamesBundle\Model\LocalityInterface;
 use JJs\Bundle\GeonamesBundle\Model\LocalityRepositoryInterface;
 use JJs\Bundle\GeonamesBundle\Model\TimezoneInterface;
 use JJs\Bundle\GeonamesBundle\Model\TimezoneRepositoryInterface;
+use JJs\Bundle\GeonamesBundle\Import\Filer as Filter;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use SplFileObject;
@@ -469,11 +470,12 @@ class LocalityImporter
      * Imports data for the specified countries
      * 
      * @param array|Traversable $countries Countries to import data for
+     * @param Filter            $filter    Locality Filter
      * @param LoggerInterface   $log       Import log
      * 
      * @return void
      */
-    public function import($countries = [], LoggerInterface $log = null)
+    public function import($countries = [], Filter $filer = null, LoggerInterface $log = null)
     {
         $log = $log ?: new NullLogger();
         $countryRepository = $this->getCountryRepository();
@@ -486,7 +488,7 @@ class LocalityImporter
         // Import data from each country
         foreach ($countries as $countryCode) {
             $country = $countryRepository->getCountry($countryCode);
-            $this->importCountry($country, $log);
+            $this->importCountry($country, $filer, $log);
         }
     }
 
@@ -494,9 +496,10 @@ class LocalityImporter
      * Imports the localities of a specific country into the locality
      * 
      * @param string|CountryInterface $country Country
+     * @param Filter                  $filter  Locality Filter
      * @param LoggerInterface         $log     Import log
      */
-    public function importCountry($country, LoggerInterface $log = null)
+    public function importCountry($country,  Filter $filter = null, LoggerInterface $log = null)
     {
         $log = $log ?: new NullLogger();
 
@@ -584,7 +587,7 @@ class LocalityImporter
             }
 
             // Import the specific locality
-            $locality = $this->importLocality($localityRepository, $locality, $country, $log);
+            $locality = $this->importLocality($localityRepository, $locality, $country, $filter, $log);
 
             // Skip non-importable localities
             if (!$locality) continue;
@@ -641,12 +644,17 @@ class LocalityImporter
      *
      * @param LocalityRepositoryInterface $localityRepository Locality repository
      * @param Locality                    $locality           Locality
-     * @param CountryInterface            $country            Country 
+     * @param CountryInterface            $country            Country
+     * @param Filter                      $filter             Locality Filter
      * @param LoggerInterface             $log                Import log
      */
-    public function importLocality(LocalityRepositoryInterface $localityRepository, Locality $locality, CountryInterface $country = null,  LoggerInterface $log = null)
+    public function importLocality(LocalityRepositoryInterface $localityRepository, Locality $locality, CountryInterface $country = null, Filter $filter, LoggerInterface $log = null)
     {
         $log = $log ?: new NullLogger();
+
+        if($filter != null && $filter->applyRules($locality) == false){
+            return null;
+        }
 
         $countryRepository  = $this->getCountryRepository();
         $timezoneRepository = $this->getTimezoneRepository();

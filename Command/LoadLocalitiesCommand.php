@@ -32,6 +32,7 @@ use Symfony\Component\Console\Helper\TableHelper;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Import\Filter as Filter;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -56,6 +57,10 @@ class LoadLocalitiesCommand extends ContainerAwareCommand
                 InputArgument::OPTIONAL | InputArgument::IS_ARRAY,
                 "Country to load the localities defaults to all countries")
             ->addOption(
+                'filter', null,
+                InputArgument::OPTIONAL | InputArgument::IS_ARRAY,
+                "filter the localities");
+            ->addOption(
                 'info', null,
                 InputOption::VALUE_NONE,
                 "Prints information about the locality importer");
@@ -74,6 +79,18 @@ class LoadLocalitiesCommand extends ContainerAwareCommand
 
         $countries = $input->getArgument('country');
 
+        $filterRules = $input->getArgument('filter');
+
+        $filter = null;
+        if(count($filterRules) > 0)
+        {
+            $filter = new Filter();
+            foreach ($filterRules as $rule) {
+                $filter->addRule($rule);
+            }
+        }
+
+
         // Display importer information if requested
         if ($input->getOption('info')) {
             $table = $this->getHelper('table');
@@ -90,6 +107,6 @@ class LoadLocalitiesCommand extends ContainerAwareCommand
         }
 
         // Import the specified countries
-        $importer->import($countries, new OutputLogger($output));
+        $importer->import($countries, $filter, new OutputLogger($output));
     }
 }
