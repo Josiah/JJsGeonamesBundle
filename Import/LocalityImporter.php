@@ -34,7 +34,7 @@ use JJs\Bundle\GeonamesBundle\Model\LocalityInterface;
 use JJs\Bundle\GeonamesBundle\Model\LocalityRepositoryInterface;
 use JJs\Bundle\GeonamesBundle\Model\TimezoneInterface;
 use JJs\Bundle\GeonamesBundle\Model\TimezoneRepositoryInterface;
-use JJs\Bundle\GeonamesBundle\Import\Filer as Filter;
+use JJs\Bundle\GeonamesBundle\Import\Filter as Filter;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use SplFileObject;

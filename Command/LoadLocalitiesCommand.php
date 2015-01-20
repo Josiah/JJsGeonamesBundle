@@ -1,17 +1,17 @@
 <?php
 /**
  * Copyright (c) 2013 Josiah Truasheim
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -32,7 +32,7 @@ use Symfony\Component\Console\Helper\TableHelper;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Import\Filter as Filter;
+use JJs\Bundle\GeonamesBundle\Import\Filter as Filter;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -53,13 +53,16 @@ class LoadLocalitiesCommand extends ContainerAwareCommand
             ->setName('geonames:load:localities')
             ->setDescription('Loads localities into the state and city repositories from a geonames.org data file')
             ->addArgument(
-                'country', 
+                'country',
                 InputArgument::OPTIONAL | InputArgument::IS_ARRAY,
                 "Country to load the localities defaults to all countries")
             ->addOption(
-                'filter', null,
-                InputArgument::OPTIONAL | InputArgument::IS_ARRAY,
-                "filter the localities");
+                'filter',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Which colors do you like?',
+                array()
+            )
             ->addOption(
                 'info', null,
                 InputOption::VALUE_NONE,
@@ -68,7 +71,7 @@ class LoadLocalitiesCommand extends ContainerAwareCommand
 
     /**
      * Executes the load localities command
-     * 
+     *
      * @param InputInterface  $input  Input interface
      * @param OutputInterface $output Output interface
      */
@@ -79,14 +82,18 @@ class LoadLocalitiesCommand extends ContainerAwareCommand
 
         $countries = $input->getArgument('country');
 
-        $filterRules = $input->getArgument('filter');
 
-        $filter = null;
-        if(count($filterRules) > 0)
-        {
-            $filter = new Filter();
-            foreach ($filterRules as $rule) {
-                $filter->addRule($rule);
+        $filter = new Filter();
+        if(is_string($input->getOption('filter'))){
+
+            $filterRules = explode ( ",",  $input->getOption('filter'));
+
+            if(count($filterRules) > 0)
+            {
+                foreach ($filterRules as $rule) {
+                    $filter->addRule($rule);
+                    $output->writeLn("Added filter rule: " . $rule);
+                }
             }
         }
 

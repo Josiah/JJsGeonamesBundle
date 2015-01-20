@@ -44,28 +44,29 @@ class Filter{
             $varFunc = $arr[1];
             $varValue = $arr[2];
 
-            if(isset($locality[$varName]) == true){
-                switch ($varFunc) {
-                    case "=":
-                    case "equal":
-                        if($locality[$varName] != intval($varValue))
-                            return false;
-                        break;
-                    case "min":
-                    case ">=":
-                    case ">":
-                        if($locality[$varName] >= intval($varValue))
-                            return false;
-                        break;
-                    case "max":
-                    case "<=":
-                    case "<":
-                        if($locality[$varName] <= intval($varValue))
-                            return false;
-                        break;
-                }
+            $varName = "get" . ucwords($varName);
+
+
+            $ret = call_user_func ( [$locality, $varName]);
+            switch ($varFunc) {
+                case "=":
+                case "equal":
+                    if(intval($ret) != intval($varValue))
+                        return false;
+                    break;
+                case "min":
+                case ">=":
+                case ">":
+                    if(intval($ret) < intval($varValue))
+                        return false;
+                    break;
+                case "max":
+                case "<=":
+                case "<":
+                    if(intval($ret) > intval($varValue))
+                        return false;
+                    break;
             }
-            return false;
         }
         return true;
     }
