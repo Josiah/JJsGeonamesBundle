@@ -54,4 +54,8 @@ class City extends Locality
     public function __toString() {
         return $this->getNameUtf8();
     }
+
+    public function getGeopoint() {
+        return $this->getLatitude() . ',' . $this->getLongitude();
+    }
 }
