@@ -115,30 +115,41 @@ app/console geonames:load:timezones
 ```
 
 ### Filter localities  
+
 This fork allows you to filter localities that you want to import into your database.  
-**Note** This feature is little tested, use it at own risk.  
+**Note** This feature is little tested, use it at own risk.
+  
 #### Enable the filter  
+
 To use a filter, you have to specify the filter option `geonames:load:localities --filter="rule" [countries]`.  
-You might use several rules at once `geonames:load:localities --filter="rule,rule2" [countries]`.   
+You might use several rules at once `geonames:load:localities --filter="rule,rule2" [countries]`.  
+
 ### Add a filter rule  
+
 A filter rule consists of three parts:  
 - the value name  
 - the compare function  
 - the compare value  
-`:` is used as an delemiter: `valuename:compare_func:compare_value`  
+`:` is used as an delemiter: `valuename:compare_func:compare_value`.  
+
 #### Value name  
+
 The value name is used to access a specific variable inside the Locality class.  
 It is internally converted to call the corresponding get function for that variable  (`population` would be converted to `getPopulation`).  
 Only the first character of the value name will be converted to an upper-case letter,  
 so make sure that you check `Import/Locality.php` for the correct spelling of your get-function.  
+
 #### Compare function  
+
 At this point you can use following functions:  
 To check if the value:  
 ... is equal to the compare value (strings and integer) use `=`, `equal` or`equals`.  
 ... is less or equal than the compare value (integer) use `<=`.  
 ... is greater or equal than the compare value (integer) use  `>=`.  
-... contains the compare value (string) use `contains`.
+... contains the compare value (string) use `contains`.  
+
 #### Examples  
+
 Here are some examples:  
 ```sh
 # load all localities from germany with a population >= 2000  
