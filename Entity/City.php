@@ -50,4 +50,8 @@ class City extends Locality
 
         return $this;
     }
+
+    public function __toString() {
+        return $this->getNameUtf8();
+    }
 }
