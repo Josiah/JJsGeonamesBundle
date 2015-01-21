@@ -114,6 +114,52 @@ Loads a list of timezones mapped to countries
 app/console geonames:load:timezones
 ```
 
+### Filter localities
+
+This fork allows you to filter localities that you want to import into your database.
+**Note** This feature is little tested, use it at own risk.
+#### Enable the filter
+To use a filter, you have to specify the filter option `geonames:load:localities --filter="rule" [countries]`.
+You might use several rules at once `geonames:load:localities --filter="rule,rule2" [countries]`.
+#### Add a filter rule
+A filter rule consists of three parts:
+- the value name
+- the compare function
+- the compare value
+`:` is used as an delemiter: `valuename:compare_func:compare_value`
+##### Value name
+The value name is used to access a specific variable inside the Locality class.
+It is internally converted to call the corresponding get function for that variable (`population` would be converted to `getPopulation`).
+Only the first character of the value name will be converted to an upper-case letter,
+so make sure that you check `Import/Locality.php` for the correct spelling of your get-function.
+##### Compare function
+At this point you can use following functions:
+- To check if the value is equal to the compare value (strings and integer):
+	--*`=`
+	--*`equal`
+	--*`equals`
+- To check if the value is less or equal than the compare value (integer):
+	--*`<=`
+- To check if the value is greater or equal than the compare value (integer):
+	--*`>=`
+- To check if the value contains the compare value (string):
+	--*`contains`
+#### Examples
+Here are some examples:
+```
+#load all localities from germany with a population >= 2000
+app/console geonames:load:localities --filter="population:>=:2000" DE
+
+#load all localities with the locality-name "Kiel"
+app/console geonames:load:localities --filter="nameUtf8:equals:Kiel"
+
+#load all localities that contain "Test" in the locality-name
+app/console geonames:load:localities --filter="nameUtf8:contains:Test"
+
+#load all localities from germany with a population between 42000 and 100000
+app/console geonames:load:localities --filter="population:>=:42000,population:<=:100000" DE
+```
+
 ### Import localities
 
 There are two options for importing the localities - either the whole world at
@@ -130,6 +176,14 @@ app/console geonames:load:localities
 
 # Subset of countries (list the desired contries as arguments)
 app/console geonames:load:localities US CA
+
+#Using the filter function (all countries)
+
+app/console geonames:load:localities --filter="option:func:value"
+
+#Using the filter function (specific countries, as argument list)
+app/console geonames:load:localities --filter="option:func:value" US CA
+
 ```
 
  [1]: http://geonames.org
