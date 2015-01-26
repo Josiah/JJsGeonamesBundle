@@ -238,4 +238,8 @@ class Country implements CountryInterface
 
         return $this;
     }
+
+    public function __toString() {
+        return $this->getName();
+    }
 }
