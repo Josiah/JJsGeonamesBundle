@@ -11,6 +11,7 @@ use Doctrine\ORM\Mapping\ManyToOne;
 use Doctrine\ORM\Mapping\Table;
 use Gedmo\Mapping\Annotation as Gedmo;
 use Doctrine\ORM\Mapping as ORM;
+use Doctrine\Common\Collections\ArrayCollection;
 
 /**
  * City
@@ -19,10 +20,12 @@ use Doctrine\ORM\Mapping as ORM;
  *
  * @Entity(repositoryClass="CityRepository")
  * @Table(name="geo_city")
+ *
  * @author Josiah <josiah@jjs.id.au>
  */
 class City extends Locality
 {
+
     /**
      * State
      *
@@ -36,6 +39,15 @@ class City extends Locality
      * @ORM\Column(length=128, unique=true)
      */
     private $slug;
+
+    /**
+     * @var \Doctrine\Common\Collections\ArrayCollection
+     */
+    private $relation;
+
+    public function __construct() {
+        $this->relation = new ArrayCollection();
+    }
 
     /**
      * Returns the state
@@ -82,6 +94,24 @@ class City extends Locality
     {
         $this->slug = $slug;
     }
+
+    /**
+     * @return ArrayCollection
+     */
+    public function getRelation()
+    {
+        return $this->relation;
+    }
+
+    /**
+     * @param ArrayCollection $relation
+     */
+    public function setRelation($relation)
+    {
+        $this->relation = $relation;
+    }
+
+
 
 
 }
