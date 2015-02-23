@@ -46,6 +46,7 @@ class City extends Locality
     private $relation;
 
     public function __construct() {
+		parent::__construct();
         $this->relation = new ArrayCollection();
     }
 
