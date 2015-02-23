@@ -29,7 +29,7 @@ class City extends Locality
     /**
      * State
      *
-     * @ManyToOne(targetEntity="Country")
+     * @ManyToOne(targetEntity="State")
      * @var State
      */
     protected $state;
