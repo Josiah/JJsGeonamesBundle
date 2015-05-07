@@ -28,6 +28,8 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Persistence\ManagerRegistry;
 use Guzzle\Http\Client as HttpClient;
 use InvalidArgumentException;
+use JJs\Bundle\GeonamesBundle\Entity\City;
+use JJs\Bundle\GeonamesBundle\Entity\State;
 use JJs\Bundle\GeonamesBundle\Model\CountryInterface;
 use JJs\Bundle\GeonamesBundle\Model\CountryRepositoryInterface;
 use JJs\Bundle\GeonamesBundle\Model\LocalityInterface;
@@ -516,6 +518,7 @@ class LocalityImporter
                     'code' => $countryCode,
                     'repository' => get_class($countryRepository),
                 ]);
+                return [];
             }
         }
 
@@ -545,6 +548,8 @@ class LocalityImporter
         // Iterate over all the localities in the stream
         $lineNumber = 0;
         $managers = [];
+        $cities = [];
+        $states = [];
         while (false !== $row = fgetcsv($stream, 0, $separator, $enclosure)) {
             // Increment the line number
             $lineNumber++;
@@ -613,6 +618,11 @@ class LocalityImporter
             $localityManager->persist($locality);
             $localityManager->flush();
 
+            if($locality instanceof City)
+                $cities[] = $locality;
+            elseif($locality instanceof State)
+                $states[$locality->getAdmin1Code()] = $locality;
+
             // Register that the locality was imported
             $type = substr($localityClass, strrpos($localityClass, '\\')+1);
             $log->info("{country_code} {type} {locality} imported into repository {repository}", [
@@ -624,6 +634,18 @@ class LocalityImporter
         }
 
         $log->info("Saving {country} data", ['country' => $country->getName()]);
+
+        // Lets update states on city entities. We cannot do it earlier as desired states may not be loaded on city import
+        if(count($cities)) {
+            $cityManager = $managerRegistry->getManagerForClass(get_class($cities[0]));
+
+            foreach ($cities AS $city) {
+                if (isset($states[$city->getAdmin1Code()])) {
+                    $city->setState($states[$city->getAdmin1Code()]);
+                    $cityManager->persist($city);
+                }
+            }
+        }
 
         // Flush all managers
         foreach ($managers as $manager) {
@@ -760,8 +782,8 @@ class LocalityImporter
             $name,
             $asciiName,
             $alternateNames,
-            $latitude,
-            $longitude,
+            floatval($latitude),
+            floatval($longitude),
             $featureClass,
             $featureCode,
             $countryCode,

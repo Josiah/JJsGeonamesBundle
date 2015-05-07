@@ -62,7 +62,7 @@ abstract class Locality
     /**
      * Name (ASCII encoded)
      *
-     * @Column(name="name_ascii", type="string")
+     * @Column(name="name_ascii", type="string", nullable=true)
      * @var string
      */
     protected $nameAscii;
@@ -106,6 +106,14 @@ abstract class Locality
      * @var DateTime
      */
     protected $modificationDate;
+
+    /**
+     * fipscode (subject to change to iso code), see exceptions below, see file admin1Codes.txt for display names of
+     * this code; Saved here to set proper states for each city
+     *
+     * @var string
+     */
+    protected $admin1Code;
 
     /**
      * Creates a new locality
@@ -333,6 +341,18 @@ abstract class Locality
     public function setModificationDate(DateTime $modificationDate)
     {
         $this->modificationDate = $modificationDate;
+
+        return $this;
+    }
+
+    public function getAdmin1Code()
+    {
+        return $this->admin1Code;
+    }
+
+    public function setAdmin1Code($admin1Code)
+    {
+        $this->admin1Code = $admin1Code;
 
         return $this;
     }
