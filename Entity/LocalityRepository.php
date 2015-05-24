@@ -149,5 +149,9 @@ abstract class LocalityRepository extends EntityRepository implements LocalityRe
         if ($timezone = $timezoneRepository->getTimezone($source->getTimezone())) {
             $destination->setTimezone($timezone);
         }
+
+        if ($admin1Code = $source->getAdmin1Code()) {
+            $destination->setAdmin1Code($admin1Code);
+        }
     }
 }

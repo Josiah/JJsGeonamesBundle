@@ -550,6 +550,8 @@ class LocalityImporter
         $managers = [];
         $cities = [];
         $states = [];
+
+        $repositories = [];
         while (false !== $row = fgetcsv($stream, 0, $separator, $enclosure)) {
             // Increment the line number
             $lineNumber++;
@@ -577,42 +579,50 @@ class LocalityImporter
             // User function is called indirectly to allow the createLocality
             // method to be solely responsible for the generation of locality
             // information
-            $locality = call_user_func_array([$this, 'createLocality'], $row);
+            $importedLocality = call_user_func_array([$this, 'createLocality'], $row);
 
             // Determine the locality repository for import
-            $localityRepository = $this->getLocalityRepository($locality->getFeatureCode());
+            $featureCode = $importedLocality->getFeatureCode();
+            if(!array_key_exists($featureCode, $repositories))
+                $repositories[$featureCode] = $this->getLocalityRepository($featureCode);
+
+            $localityRepository = $repositories[$featureCode];
 
             // Skip unsupported geographical features
             if (!$localityRepository) {
                 $log->debug("{name} skipped ({code} feature not supported)", [
-                    'code' => $locality->getFeatureCode(),
-                    'name' => $locality->getNameAscii(),
+                    'code' => $importedLocality->getFeatureCode(),
+                    'name' => $importedLocality->getNameAscii(),
                 ]);
                 continue;
             }
 
             // Import the specific locality
-            $locality = $this->importLocality($localityRepository, $locality, $country, $filter, $log);
+
+            $locality = $this->importLocality($localityRepository, $importedLocality, $country, $filter, $log);
 
             // Skip non-importable localities
             if (!$locality) continue;
 
             // Determine the manager for the locality
             $localityClass = get_class($locality);
-            $localityManager = $managerRegistry->getManagerForClass($localityClass);
+            if(!isset($managers[$localityClass])) {
+                $localityManager = $managerRegistry->getManagerForClass($localityClass);
 
-            // Ensure the locality manager was loaded
-            if (!$localityManager) {
-                $log->error("No object manager registered for {class}", [
-                    'class' => get_class($locality),
-                ]);
-                continue;
+                // Ensure the locality manager was loaded
+                if (!$localityManager) {
+                    $log->error("No object manager registered for {class}", [
+                        'class' => get_class($locality),
+                    ]);
+                    continue;
+                }
+                $managers[$localityClass] = $localityManager;
             }
+
+            $localityManager = $managers[$localityClass];
 
             // Add the manager to the list of local managers (if required)
-            if (!in_array($localityManager, $managers, true)) {
-                $managers[] = $localityManager;
-            }
+
 
             // Persist the locality
             $localityManager->persist($locality);
@@ -624,13 +634,13 @@ class LocalityImporter
                 $states[$locality->getAdmin1Code()] = $locality;
 
             // Register that the locality was imported
-            $type = substr($localityClass, strrpos($localityClass, '\\')+1);
-            $log->info("{country_code} {type} {locality} imported into repository {repository}", [
+            //$type = substr($localityClass, strrpos($localityClass, '\\')+1);
+            /*$log->info("{country_code} {type} {locality} imported into repository {repository}", [
                 'country_code' => $country->getCode(),
                 'locality'     => $locality->getNameAscii(),
                 'type'         => $type,
                 'repository'   => get_class($localityRepository),
-            ]);
+            ]);*/
         }
 
         $log->info("Saving {country} data", ['country' => $country->getName()]);
@@ -645,6 +655,7 @@ class LocalityImporter
                     $cityManager->persist($city);
                 }
             }
+            $cityManager->flush();
         }
 
         // Flush all managers
@@ -715,10 +726,10 @@ class LocalityImporter
         $locality->setTimezone($timezone);
 
         // Register that the locality was imported
-        $log->debug("'{locality}' imported into repository {repository}", [
+        /*$log->debug("'{locality}' imported into repository {repository}", [
             'locality' => $locality->getNameAscii(),
             'repository' => get_class($localityRepository),
-        ]);
+        ]);*/
 
         // Import the localty into the repository
         $locality = $localityRepository->importLocality($locality);

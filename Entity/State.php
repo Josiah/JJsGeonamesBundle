@@ -6,6 +6,7 @@ use Doctrine\ORM\Mapping\Column;
 use Doctrine\ORM\Mapping\Entity;
 use Doctrine\ORM\Mapping\GeneratedValue;
 use Doctrine\ORM\Mapping\Id;
+use Doctrine\ORM\Mapping\Index;
 use Doctrine\ORM\Mapping\JoinColumn;
 use Doctrine\ORM\Mapping\ManyToOne;
 use Doctrine\ORM\Mapping\Table;
@@ -19,7 +20,7 @@ use Doctrine\ORM\Mapping as ORM;
  * 'province' for some countries.
  *
  * @Entity(repositoryClass="StateRepository")
- * @Table(name="geo_state")
+ * @Table(name="geo_state", indexes={@ORM\Index(name="geoname_id", columns={"geoname_id"})}))
  * @author Josiah <josiah@jjs.id.au>
  */
 class State extends Locality

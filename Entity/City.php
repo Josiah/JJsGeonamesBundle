@@ -6,6 +6,7 @@ use Doctrine\ORM\Mapping\Column;
 use Doctrine\ORM\Mapping\Entity;
 use Doctrine\ORM\Mapping\GeneratedValue;
 use Doctrine\ORM\Mapping\Id;
+use Doctrine\ORM\Mapping\Index;
 use Doctrine\ORM\Mapping\JoinColumn;
 use Doctrine\ORM\Mapping\ManyToOne;
 use Doctrine\ORM\Mapping\Table;
@@ -19,13 +20,12 @@ use Doctrine\Common\Collections\ArrayCollection;
  * A city, town, village or other agglomeration of buildings where people work.
  *
  * @Entity(repositoryClass="CityRepository")
- * @Table(name="geo_city")
+ * @Table(name="geo_city", indexes={@ORM\Index(name="geoname_id", columns={"geoname_id"})}))
  *
  * @author Josiah <josiah@jjs.id.au>
  */
 class City extends Locality
 {
-
     /**
      * State
      *
@@ -53,7 +53,7 @@ class City extends Locality
     /**
      * Returns the state
      * 
-     * @return string
+     * @return State
      */
     public function getState()
     {
@@ -111,8 +111,4 @@ class City extends Locality
     {
         $this->relation = $relation;
     }
-
-
-
-
 }
