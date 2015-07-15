@@ -20,7 +20,10 @@ use Doctrine\Common\Collections\ArrayCollection;
  * A city, town, village or other agglomeration of buildings where people work.
  *
  * @Entity(repositoryClass="CityRepository")
- * @Table(name="geo_city", indexes={@ORM\Index(name="geoname_id", columns={"geoname_id"})}))
+ * @Table(name="geo_city", indexes={
+ *      @ORM\Index(name="geoname_id", columns={"geoname_id"}),
+ *      @ORM\Index(name="lat_lng", columns={"latitude", "longitude"}),
+ * }))
  *
  * @author Josiah <josiah@jjs.id.au>
  */
