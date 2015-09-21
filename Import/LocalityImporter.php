@@ -28,6 +28,8 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Persistence\ManagerRegistry;
 use Guzzle\Http\Client as HttpClient;
 use InvalidArgumentException;
+use JJs\Bundle\GeonamesBundle\Entity\City;
+use JJs\Bundle\GeonamesBundle\Entity\State;
 use JJs\Bundle\GeonamesBundle\Model\CountryInterface;
 use JJs\Bundle\GeonamesBundle\Model\CountryRepositoryInterface;
 use JJs\Bundle\GeonamesBundle\Model\LocalityInterface;
@@ -38,6 +40,8 @@ use JJs\Bundle\GeonamesBundle\Import\Filter as Filter;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use SplFileObject;
+use Symfony\Component\Console\Helper\ProgressHelper;
+use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * Locality Importer
@@ -475,7 +479,8 @@ class LocalityImporter
      * 
      * @return void
      */
-    public function import($countries = [], Filter $filer = null, LoggerInterface $log = null)
+    public function import($countries = [], Filter $filer = null, LoggerInterface $log = null,
+                           ProgressHelper $progressHelper, OutputInterface $outputInterface)
     {
         $log = $log ?: new NullLogger();
         $countryRepository = $this->getCountryRepository();
@@ -488,8 +493,18 @@ class LocalityImporter
         // Import data from each country
         foreach ($countries as $countryCode) {
             $country = $countryRepository->getCountry($countryCode);
-            $this->importCountry($country, $filer, $log);
+            $this->importCountry($country, $filer, $log, $progressHelper, $outputInterface);
         }
+    }
+
+    public function getLinesCount($handle){
+        $linecount = 0;
+        while(!feof($handle)){
+            $line = fgets($handle, 4096);
+            $linecount = $linecount + substr_count($line, PHP_EOL);
+        }
+
+        return $linecount;
     }
 
     /**
@@ -499,7 +514,8 @@ class LocalityImporter
      * @param Filter                  $filter  Locality Filter
      * @param LoggerInterface         $log     Import log
      */
-    public function importCountry($country,  Filter $filter = null, LoggerInterface $log = null)
+    public function importCountry($country,  Filter $filter = null, LoggerInterface $log = null,
+                                  ProgressHelper $progressHelper, OutputInterface $outputInterface)
     {
         $log = $log ?: new NullLogger();
 
@@ -516,6 +532,7 @@ class LocalityImporter
                     'code' => $countryCode,
                     'repository' => get_class($countryRepository),
                 ]);
+                return [];
             }
         }
 
@@ -545,7 +562,15 @@ class LocalityImporter
         // Iterate over all the localities in the stream
         $lineNumber = 0;
         $managers = [];
+        $cities = [];
+        $states = [];
+
+        $progressHelper->setRedrawFrequency(100);
+        $progressHelper->start($outputInterface, $this->getLinesCount($stream));
+        $stream = @fopen($path, 'r');
+        $repositories = [];
         while (false !== $row = fgetcsv($stream, 0, $separator, $enclosure)) {
+            $progressHelper->advance();
             // Increment the line number
             $lineNumber++;
 
@@ -572,58 +597,83 @@ class LocalityImporter
             // User function is called indirectly to allow the createLocality
             // method to be solely responsible for the generation of locality
             // information
-            $locality = call_user_func_array([$this, 'createLocality'], $row);
+            $importedLocality = call_user_func_array([$this, 'createLocality'], $row);
 
             // Determine the locality repository for import
-            $localityRepository = $this->getLocalityRepository($locality->getFeatureCode());
+            $featureCode = $importedLocality->getFeatureCode();
+            if(!array_key_exists($featureCode, $repositories))
+                $repositories[$featureCode] = $this->getLocalityRepository($featureCode);
+
+            $localityRepository = $repositories[$featureCode];
 
             // Skip unsupported geographical features
             if (!$localityRepository) {
                 $log->debug("{name} skipped ({code} feature not supported)", [
-                    'code' => $locality->getFeatureCode(),
-                    'name' => $locality->getNameAscii(),
+                    'code' => $importedLocality->getFeatureCode(),
+                    'name' => $importedLocality->getNameAscii(),
                 ]);
                 continue;
             }
 
             // Import the specific locality
-            $locality = $this->importLocality($localityRepository, $locality, $country, $filter, $log);
+
+            $locality = $this->importLocality($localityRepository, $importedLocality, $country, $filter, $log);
 
             // Skip non-importable localities
             if (!$locality) continue;
 
             // Determine the manager for the locality
             $localityClass = get_class($locality);
-            $localityManager = $managerRegistry->getManagerForClass($localityClass);
+            if(!isset($managers[$localityClass])) {
+                $localityManager = $managerRegistry->getManagerForClass($localityClass);
 
-            // Ensure the locality manager was loaded
-            if (!$localityManager) {
-                $log->error("No object manager registered for {class}", [
-                    'class' => get_class($locality),
-                ]);
-                continue;
+                // Ensure the locality manager was loaded
+                if (!$localityManager) {
+                    $log->error("No object manager registered for {class}", [
+                        'class' => get_class($locality),
+                    ]);
+                    continue;
+                }
+                $managers[$localityClass] = $localityManager;
             }
 
-            // Add the manager to the list of local managers (if required)
-            if (!in_array($localityManager, $managers, true)) {
-                $managers[] = $localityManager;
-            }
+            $localityManager = $managers[$localityClass];
 
             // Persist the locality
             $localityManager->persist($locality);
             $localityManager->flush();
 
+            if($locality instanceof City)
+                $cities[] = $locality;
+            elseif($locality instanceof State)
+                $states[$locality->getAdmin1Code()] = $locality;
+
             // Register that the locality was imported
-            $type = substr($localityClass, strrpos($localityClass, '\\')+1);
-            $log->info("{country_code} {type} {locality} imported into repository {repository}", [
+            //$type = substr($localityClass, strrpos($localityClass, '\\')+1);
+            /*$log->info("{country_code} {type} {locality} imported into repository {repository}", [
                 'country_code' => $country->getCode(),
                 'locality'     => $locality->getNameAscii(),
                 'type'         => $type,
                 'repository'   => get_class($localityRepository),
-            ]);
+            ]);*/
         }
 
+        $progressHelper->finish();
+        $outputInterface->writeln("Setting state field on cities...");
         $log->info("Saving {country} data", ['country' => $country->getName()]);
+
+        // Lets update states on city entities. We cannot do it earlier as desired states may not be loaded on city import
+        if(count($cities)) {
+            $cityManager = $managerRegistry->getManagerForClass(get_class($cities[0]));
+
+            foreach ($cities AS $city) {
+                if (isset($states[$city->getAdmin1Code()])) {
+                    $city->setState($states[$city->getAdmin1Code()]);
+                    $cityManager->persist($city);
+                }
+            }
+            $cityManager->flush();
+        }
 
         // Flush all managers
         foreach ($managers as $manager) {
@@ -693,10 +743,10 @@ class LocalityImporter
         $locality->setTimezone($timezone);
 
         // Register that the locality was imported
-        $log->debug("'{locality}' imported into repository {repository}", [
+        /*$log->debug("'{locality}' imported into repository {repository}", [
             'locality' => $locality->getNameAscii(),
             'repository' => get_class($localityRepository),
-        ]);
+        ]);*/
 
         // Import the localty into the repository
         $locality = $localityRepository->importLocality($locality);
@@ -760,8 +810,8 @@ class LocalityImporter
             $name,
             $asciiName,
             $alternateNames,
-            $latitude,
-            $longitude,
+            floatval($latitude),
+            floatval($longitude),
             $featureClass,
             $featureCode,
             $countryCode,

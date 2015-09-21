@@ -114,6 +114,7 @@ class LoadLocalitiesCommand extends ContainerAwareCommand
         }
 
         // Import the specified countries
-        $importer->import($countries, $filter, new OutputLogger($output));
+        $progress = $this->getHelper('progress');
+        $importer->import($countries, $filter, new OutputLogger($output), $progress, $output);
     }
 }

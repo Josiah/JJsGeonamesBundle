@@ -92,4 +92,11 @@ interface LocalityInterface
      * @return DateTime
      */
     public function getModificationDate();
+
+    /**
+     * Returns admin1code for locality
+     *
+     * @return string
+     */
+    public function getAdmin1Code();
 }
